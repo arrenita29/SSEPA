@@ -488,7 +488,7 @@
             const predictedPrice = predictPrice(model, storage, batteryHealth, screenCondition, monthsSinceRelease);
             
             // Display results
-            document.getElementById('predictedPrice').textContent = `LKR ${predictedPrice.toLocaleString()}`;
+            document.getElementById('predictedPrice').textContent = `INR ${predictedPrice.toLocaleString()}`;
             
             // Show confidence and feature importance
             document.getElementById('confidenceScore').innerHTML = `
