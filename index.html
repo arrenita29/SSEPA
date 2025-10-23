@@ -473,101 +473,207 @@
     </footer>
 
     <script>
-        // Price prediction functionality
-        document.getElementById('pricePredictionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+    const API_URL = 'https://your-backend-url.herokuapp.com'; // You'll update this after deployment
+    
+    // Price prediction functionality
+    document.getElementById('pricePredictionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        document.getElementById('predictedPrice').textContent = 'Calculating...';
+        document.getElementById('confidenceScore').innerHTML = '';
+        document.getElementById('featureImportance').innerHTML = '';
+        
+        // Get form values
+        const formData = {
+            model: document.getElementById('model').value,
+            storage: parseInt(document.getElementById('storage').value),
+            battery_health: parseInt(document.getElementById('battery_health').value),
+            screen_condition: document.getElementById('screen_damages').value,
+            months_since_release: parseInt(document.getElementById('months_since_release').value)
+        };
+        
+        try {
+            // Call your backend API
+            const response = await fetch(`${API_URL}/predict`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
             
-            // Get form values
-            const model = document.getElementById('model').value;
-            const storage = parseInt(document.getElementById('storage').value);
-            const batteryHealth = parseInt(document.getElementById('battery_health').value);
-            const screenCondition = document.getElementById('screen_damages').value;
-            const monthsSinceRelease = parseInt(document.getElementById('months_since_release').value);
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
             
-            // Simulate price prediction (replace with actual API call)
-            const predictedPrice = predictPrice(model, storage, batteryHealth, screenCondition, monthsSinceRelease);
+            const result = await response.json();
             
             // Display results
-            document.getElementById('predictedPrice').textContent = `INR ${predictedPrice.toLocaleString()}`;
+            document.getElementById('predictedPrice').textContent = `INR ${result.predicted_price.toLocaleString()}`;
             
             // Show confidence and feature importance
             document.getElementById('confidenceScore').innerHTML = `
                 <div style="background: var(--success); color: white; padding: 10px; border-radius: 5px;">
-                    🎯 Prediction Confidence: 92%
+                    🎯 Prediction Confidence: ${result.confidence}%
                 </div>
             `;
             
+            // Create feature importance display
+            const features = result.feature_importance;
             document.getElementById('featureImportance').innerHTML = `
                 <h4>Key Factors Affecting Price:</h4>
                 <ul style="margin-top: 0.5rem;">
-                    <li>Model: ${getModelImpact(model)}% impact</li>
-                    <li>Storage: ${getStorageImpact(storage)}% impact</li>
-                    <li>Battery: ${getBatteryImpact(batteryHealth)}% impact</li>
+                    <li>Model: ${features.model}% impact</li>
+                    <li>Storage: ${features.storage}% impact</li>
+                    <li>Battery: ${features.battery_health}% impact</li>
+                    <li>Screen: ${features.screen_condition}% impact</li>
+                    <li>Age: ${features.age}% impact</li>
                 </ul>
             `;
-        });
-        
-        // Mock prediction function (replace with actual model inference)
-        function predictPrice(model, storage, batteryHealth, screenCondition, monthsSinceRelease) {
-            // Base prices for different models
-            const basePrices = {
-                'iphone_se_2': 60000,
-                'iphone_x': 75000,
-                'iphone_8': 45000,
-                'iphone_11': 85000,
-                'iphone_12': 95000
-            };
             
-            let price = basePrices[model] || 50000;
-            
-            // Adjust for storage
-            price += (storage / 64 - 1) * 15000;
-            
-            // Adjust for battery health
-            price *= (batteryHealth / 100);
-            
-            // Adjust for screen condition
-            const screenMultipliers = {
-                'undamaged': 1.0,
-                'minor_scratches': 0.9,
-                'cracked': 0.7
-            };
-            price *= screenMultipliers[screenCondition];
-            
-            // Adjust for age
-            price *= Math.max(0.3, 1 - (monthsSinceRelease * 0.01));
-            
-            return Math.round(price);
+        } catch (error) {
+            console.error('Prediction error:', error);
+            // Fallback to mock prediction
+            fallbackPrediction(formData);
         }
+    });
+    
+    // Fallback function if API is unavailable
+    function fallbackPrediction(formData) {
+        const { model, storage, battery_health, screen_condition, months_since_release } = formData;
         
-        function getModelImpact(model) {
-            const impacts = {
-                'iphone_se_2': 35,
-                'iphone_x': 40,
-                'iphone_8': 30,
-                'iphone_11': 45,
-                'iphone_12': 50
-            };
-            return impacts[model] || 35;
-        }
+        const predictedPrice = predictPrice(model, storage, battery_health, screen_condition, months_since_release);
         
-        function getStorageImpact(storage) {
-            return Math.min(25, (storage / 64) * 10);
-        }
+        document.getElementById('predictedPrice').textContent = `INR ${predictedPrice.toLocaleString()}`;
         
-        function getBatteryImpact(batteryHealth) {
-            return Math.max(5, (100 - batteryHealth) / 2);
-        }
+        document.getElementById('confidenceScore').innerHTML = `
+            <div style="background: var(--warning); color: white; padding: 10px; border-radius: 5px;">
+                ⚠️ Using offline prediction
+            </div>
+        `;
         
-        // Smooth scrolling for navigation links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
+        document.getElementById('featureImportance').innerHTML = `
+            <h4>Key Factors Affecting Price:</h4>
+            <ul style="margin-top: 0.5rem;">
+                <li>Model: ${getModelImpact(model)}% impact</li>
+                <li>Storage: ${getStorageImpact(storage)}% impact</li>
+                <li>Battery: ${getBatteryImpact(battery_health)}% impact</li>
+            </ul>
+        `;
+    }
+    
+    // Enhanced mock prediction functions with all iPhone models
+    function predictPrice(model, storage, batteryHealth, screenCondition, monthsSinceRelease) {
+        // Base prices for all iPhone models (INR)
+        const basePrices = {
+            'iphone_6': 15000,
+            'iphone_6s': 18000,
+            'iphone_7': 22000,
+            'iphone_7_plus': 28000,
+            'iphone_8': 32000,
+            'iphone_8_plus': 38000,
+            'iphone_se_2': 28000,
+            'iphone_x': 45000,
+            'iphone_xr': 38000,
+            'iphone_xs': 52000,
+            'iphone_xs_max': 58000,
+            'iphone_11': 48000,
+            'iphone_11_pro': 65000,
+            'iphone_11_pro_max': 72000,
+            'iphone_12': 55000,
+            'iphone_12_mini': 48000,
+            'iphone_12_pro': 68000,
+            'iphone_12_pro_max': 75000,
+            'iphone_13': 62000,
+            'iphone_13_mini': 55000,
+            'iphone_13_pro': 78000,
+            'iphone_13_pro_max': 85000,
+            'iphone_14': 70000,
+            'iphone_14_plus': 78000,
+            'iphone_14_pro': 92000,
+            'iphone_14_pro_max': 99000,
+            'iphone_15': 82000,
+            'iphone_15_plus': 88000,
+            'iphone_15_pro': 105000,
+            'iphone_15_pro_max': 115000
+        };
+        
+        let price = basePrices[model] || 35000;
+        
+        // Adjust for storage
+        price += (storage / 64 - 1) * 8000;
+        
+        // Adjust for battery health
+        price *= (batteryHealth / 100);
+        
+        // Adjust for screen condition
+        const screenMultipliers = {
+            'undamaged': 1.0,
+            'minor_scratches': 0.85,
+            'cracked': 0.65
+        };
+        price *= screenMultipliers[screenCondition] || 0.7;
+        
+        // Adjust for age
+        price *= Math.max(0.3, 1 - (monthsSinceRelease * 0.008));
+        
+        return Math.round(price);
+    }
+    
+    function getModelImpact(model) {
+        const impacts = {
+            'iphone_6': 25,
+            'iphone_6s': 28,
+            'iphone_7': 32,
+            'iphone_7_plus': 35,
+            'iphone_8': 38,
+            'iphone_8_plus': 40,
+            'iphone_se_2': 36,
+            'iphone_x': 42,
+            'iphone_xr': 39,
+            'iphone_xs': 45,
+            'iphone_xs_max': 47,
+            'iphone_11': 44,
+            'iphone_11_pro': 48,
+            'iphone_11_pro_max': 50,
+            'iphone_12': 46,
+            'iphone_12_mini': 43,
+            'iphone_12_pro': 49,
+            'iphone_12_pro_max': 52,
+            'iphone_13': 48,
+            'iphone_13_mini': 45,
+            'iphone_13_pro': 51,
+            'iphone_13_pro_max': 54,
+            'iphone_14': 50,
+            'iphone_14_plus': 52,
+            'iphone_14_pro': 55,
+            'iphone_14_pro_max': 57,
+            'iphone_15': 53,
+            'iphone_15_plus': 55,
+            'iphone_15_pro': 58,
+            'iphone_15_pro_max': 60
+        };
+        return impacts[model] || 35;
+    }
+    
+    function getStorageImpact(storage) {
+        return Math.min(25, (storage / 64) * 10);
+    }
+    
+    function getBatteryImpact(batteryHealth) {
+        return Math.max(5, (100 - batteryHealth) / 2);
+    }
+    
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
             });
         });
-    </script>
+    });
+</script>
 </body>
 </html>
